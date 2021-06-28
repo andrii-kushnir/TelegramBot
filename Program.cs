@@ -14,11 +14,15 @@ using Telegram.Bot.Types.ReplyMarkups;
 using TeleSharp.TL;
 using TeleSharp.TL.Messages;
 using TLSharp.Core;
+using WordsMatching;
 
 namespace TelegramBot
 {
     class Program
     {
+        private const string logFileName = "Log.txt";
+        private readonly MatchsMaker match;
+        private static List<UserSQL> usersSQL;
         //бот Арсеній
         private const int apiId = 1805032362;
         private const string apiHash = "AAEmfvbU4lxx4WDCtwUhaVPofbg8vKa5QDI";
@@ -46,6 +50,14 @@ namespace TelegramBot
 
         static void Main(string[] args)
         {
+            usersSQL = UsersFromSQL.Do();
+            //foreach(var user in usersSQL)
+            //{
+            //    user.FirstName = Transliteration.Translit(user.FirstName);
+            //    user.LastName = Transliteration.Translit(user.LastName);
+            //    user.Surname = Transliteration.Translit(user.Surname);
+            //}
+
             Do_Bot();
 
             //Do_TelegramAPI().Wait();
@@ -74,6 +86,8 @@ namespace TelegramBot
 
             Console.WriteLine();
 
+            var fileStream = new StreamWriter(sessionPath + logFileName, true);
+
             var infinity = true;
             while (infinity)
             {
@@ -87,9 +101,91 @@ namespace TelegramBot
                 var message = _messages.FirstOrDefault(m => (!m.Done));
                 if (message != null)
                 {
+                    fileStream.WriteLine($"{message.ChatId},{message.FirstName},{message.LastName},{message.Text}");
+                    fileStream.Flush();
+
+                    if (message.Text == @"/start")
+                    {
+                        var text = "Привіт! Ви хто?";
+                        var ikm = new InlineKeyboardMarkup(new[] {
+                            new[] { InlineKeyboardButton.WithCallbackData("Працівник компанії АРС", "workingArc")},
+                            new[] { InlineKeyboardButton.WithCallbackData("Клієнт компанії АРС", "clientArc")},
+                            new[] { InlineKeyboardButton.WithCallbackData("Випадково зайшов", "nothingArc")}
+                        });
+
+                        _botClient.SendTextMessageAsync(message.ChatId, text, replyMarkup: ikm).Wait();
+
+                        EventHandler<CallbackQueryEventArgs> answerForBlok1 = null;
+                        EventHandler<CallbackQueryEventArgs> answerForBlok2 = null;
+
+                        answerForBlok1 = (object sender, CallbackQueryEventArgs ev) =>
+                        {
+                            //var msg = ev.CallbackQuery.Message;
+                            if (ev.CallbackQuery.Data == "workingArc")
+                            {
+                                _botClient.OnCallbackQuery -= answerForBlok1;
+                                _botClient.SendTextMessageAsync(message.ChatId, "Вітаю працівника АРС! Індентифікуйте себе:").Wait();
+                                foreach (var user in usersSQL)
+                                {
+                                    var match = new MatchsMaker(Transliteration.Translit(user.LastName), message.LastName);
+                                    user.Vaga = match.GetScore();
+                                }
+                                var usersLike = usersSQL.OrderByDescending(u => u.Vaga).Take(3).ToList();
+                                //var sss = usersSQL.Select(u => { var match = new MatchsMaker(u.LastName, message.LastName); return match.GetScore(); });
+
+                                var text1 = "Вітаю працівника АРС! Індентифікуйте себе:";
+                                var ikm1 = new InlineKeyboardMarkup(new[] {
+                                        new[] { InlineKeyboardButton.WithCallbackData($"1. {usersLike[0].LastName} {usersLike[0].FirstName} {usersLike[0].Surname}", "var1")},
+                                        new[] { InlineKeyboardButton.WithCallbackData($"2. {usersLike[1].LastName} {usersLike[1].FirstName} {usersLike[1].Surname}", "var2")},
+                                        new[] { InlineKeyboardButton.WithCallbackData($"3. {usersLike[2].LastName} {usersLike[2].FirstName} {usersLike[2].Surname}", "var3")},
+                                        new[] { InlineKeyboardButton.WithCallbackData($"Тут мене немає", "nothing")}
+                                });
+                                _botClient.SendTextMessageAsync(message.ChatId, text1, replyMarkup: ikm1).Wait();
+                            }
+                            else if (ev.CallbackQuery.Data == "clientArc")
+                            {
+                                _botClient.OnCallbackQuery -= answerForBlok1;
+                                _botClient.SendTextMessageAsync(message.ChatId, "Вітаю клієнта АРС! Це бот компанії АРС під назвою АРСеній. Я буду присилати вам сюди цікаві пропозиції.").Wait();
+                            }
+                            else if (ev.CallbackQuery.Data == "nothingArc")
+                            {
+                                _botClient.OnCallbackQuery -= answerForBlok1;
+                                _botClient.SendTextMessageAsync(message.ChatId, "Прощайте. Щасти вам.").Wait();
+                            }
+
+                        };
+                        _botClient.OnCallbackQuery += answerForBlok1;
+
+                        answerForBlok2 = (object sender, CallbackQueryEventArgs ev) =>
+                        {
+                            if (ev.CallbackQuery.Data == "var1")
+                            {
+                                _botClient.OnCallbackQuery -= answerForBlok2;
+                                _botClient.SendTextMessageAsync(message.ChatId, "Дякуємо.").Wait();
+                            }
+                            else if (ev.CallbackQuery.Data == "var2")
+                            {
+                                _botClient.OnCallbackQuery -= answerForBlok2;
+                                _botClient.SendTextMessageAsync(message.ChatId, "Дякуємо.").Wait();
+                            }
+                            else if (ev.CallbackQuery.Data == "var3")
+                            {
+                                _botClient.OnCallbackQuery -= answerForBlok2;
+                                _botClient.SendTextMessageAsync(message.ChatId, "Дякуємо.").Wait();
+                            }
+                            else if (ev.CallbackQuery.Data == "nothing")
+                            {
+                                _botClient.OnCallbackQuery -= answerForBlok2;
+                                _botClient.SendTextMessageAsync(message.ChatId, "Дякуємо.").Wait();
+                            }
+                        };
+                        _botClient.OnCallbackQuery += answerForBlok2;
+
+                    }
+
                     if (message.Text == @"/getid")
                     {
-                        _botClient.SendTextMessageAsync(message.ChatId, $"Іd нашої розмови: {message.ChatId}");
+                        _botClient.SendTextMessageAsync(message.ChatId, $"Id нашої розмови: {message.ChatId}");
                         Console.WriteLine($"Send a message '{message.ChatId}' to {message.FirstName} {message.LastName}");
                     }
 
@@ -102,6 +198,7 @@ namespace TelegramBot
                 }
             }
 
+            fileStream.Dispose();
             _botClient.StopReceiving();
         }
 
@@ -112,6 +209,7 @@ namespace TelegramBot
                 Console.WriteLine($"Received a message  '{e.Message.Text}'  from {e.Message.From}");
                 var message = new Message
                 {
+                    MessageId = e.Message.MessageId,
                     UserId = e.Message.From.Id,
                     Username = e.Message.From.Username,
                     FirstName = e.Message.From.FirstName,
@@ -136,7 +234,7 @@ namespace TelegramBot
             }
 
             //SendMessage("380676722619", "Вперьод!").Wait();  //Третьяков
-            //SendMessage("380930418206", "По чому помідори?").Wait(); //Дмитро
+            SendMessage("380930418206", "Test!!!").Wait(); //Дмитро
             //SendMessageToChannel("Група Арсенія", "Не хвилюйтесь, це тест").Wait();
 
             Console.ReadLine();
