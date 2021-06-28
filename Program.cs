@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -19,19 +20,19 @@ namespace TelegramBot
     class Program
     {
         //бот Арсеній
-        //private const int apiId = 1805032362;
-        //private const string apiHash = "AAEmfvbU4lxx4WDCtwUhaVPofbg8vKa5QDI";
+        private const int apiId = 1805032362;
+        private const string apiHash = "AAEmfvbU4lxx4WDCtwUhaVPofbg8vKa5QDI";
 
         //бот АндрійБот
         //private const int apiId = 1802156713;
         //private const string apiHash = "AAHA1ZNEMBW94UHppMMU6RrMP-nxjWuQsXw";
 
         //Andrii_My_API
+        //private const int apiId = 6423473;
+        //private const string apiHash = "37e7866209e483e9f35edb45e96950b1";
         private const string sessionPath = @"C:\Users\Andrii.Kushnir\source\repos\TelegramBot\bin\Debug\";
-        private const int apiId = 6423473;
-        private const string apiHash = "37e7866209e483e9f35edb45e96950b1";
         private const string phone = "380689559241";
-        private static string code = "46138"; 
+        private static string code = "46138";
 
         //Test configuration:149.154.167.40:443
         //Production configuration:149.154.167.50:443
@@ -45,21 +46,9 @@ namespace TelegramBot
 
         static void Main(string[] args)
         {
-            //var token = $"{apiId}:{apiHash}";
-            //Do_Bot();
+            Do_Bot();
 
-            Do_TelegramAPI().Wait();
-            if (!_botApi.IsUserAuthorized())
-            {
-                AuthenticationAsync().Wait();
-            }
-
-            //SendMessage("380676722619", "Вперьод!").Wait();  //Третьяков
-            //SendMessage("380930418206", "По чому помідори?").Wait(); 
-            SendMessageToChannel("Група Арсенія", "Не хвилюйтесь, це тест").Wait();
-
-            Console.ReadLine();
-            _botApi.Dispose();
+            //Do_TelegramAPI().Wait();
         }
 
         [Obsolete]
@@ -100,8 +89,8 @@ namespace TelegramBot
                 {
                     if (message.Text == @"/getid")
                     {
-                        _botClient.SendTextMessageAsync(message.ChatId, message.ChatId.ToString());
-                        Console.WriteLine($"Send a message '{message.ChatId.ToString()}' to {message.FirstName} {message.LastName}");
+                        _botClient.SendTextMessageAsync(message.ChatId, $"Іd нашої розмови: {message.ChatId}");
+                        Console.WriteLine($"Send a message '{message.ChatId}' to {message.FirstName} {message.LastName}");
                     }
 
                     if (message.Text == @"/stop")
@@ -140,6 +129,18 @@ namespace TelegramBot
         {
             _botApi = new TelegramClient(apiId, apiHash, null, sessionPath + phone);
             await _botApi.ConnectAsync();
+
+            if (!_botApi.IsUserAuthorized())
+            {
+                AuthenticationAsync().Wait();
+            }
+
+            //SendMessage("380676722619", "Вперьод!").Wait();  //Третьяков
+            //SendMessage("380930418206", "По чому помідори?").Wait(); //Дмитро
+            //SendMessageToChannel("Група Арсенія", "Не хвилюйтесь, це тест").Wait();
+
+            Console.ReadLine();
+            _botApi.Dispose();
         }
 
         static async Task AuthenticationAsync()
@@ -226,6 +227,7 @@ namespace TelegramBot
 
         static async Task JoinChannel(string phone, string message)
         {
+            //Not work
             TLInputPhoneContact canal;
             var request = new TeleSharp.TL.Channels.TLRequestJoinChannel()
             {
