@@ -69,6 +69,8 @@ namespace TelegramBot
             var token = $"{apiId}:{apiHash}";
             var _botClient = new TelegramBotClient(token);
             var me = _botClient.GetMeAsync().Result;
+
+            Console.OutputEncoding = Encoding.UTF8;
             Console.WriteLine($"Hello, World! I am user {me.Id} and my name is {me.FirstName}.");
 
 
@@ -124,7 +126,7 @@ namespace TelegramBot
                             if (ev.CallbackQuery.Data == "workingArc")
                             {
                                 _botClient.OnCallbackQuery -= answerForBlok1;
-                                _botClient.SendTextMessageAsync(message.ChatId, "Вітаю працівника АРС! Індентифікуйте себе:").Wait();
+                                _botClient.OnCallbackQuery += answerForBlok2;
                                 foreach (var user in usersSQL)
                                 {
                                     var match = new MatchsMaker(Transliteration.Translit(user.LastName), message.LastName);
@@ -154,7 +156,6 @@ namespace TelegramBot
                             }
 
                         };
-                        _botClient.OnCallbackQuery += answerForBlok1;
 
                         answerForBlok2 = (object sender, CallbackQueryEventArgs ev) =>
                         {
@@ -176,11 +177,12 @@ namespace TelegramBot
                             else if (ev.CallbackQuery.Data == "nothing")
                             {
                                 _botClient.OnCallbackQuery -= answerForBlok2;
-                                _botClient.SendTextMessageAsync(message.ChatId, "Дякуємо.").Wait();
+                                _botClient.SendTextMessageAsync(message.ChatId, $"Id нашої розмови: {message.ChatId}.\nЗверніться в компютерний відділ для індентифікації.").Wait();
                             }
                         };
-                        _botClient.OnCallbackQuery += answerForBlok2;
 
+
+                        _botClient.OnCallbackQuery += answerForBlok1;
                     }
 
                     if (message.Text == @"/getid")
