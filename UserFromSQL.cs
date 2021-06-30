@@ -46,6 +46,7 @@ namespace TelegramBot
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string Surname { get; set; }
+        public int Id { get; set; }
         public float Vaga { get; set; }
     }
 }

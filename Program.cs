@@ -27,6 +27,12 @@ namespace TelegramBot
         private const int apiId = 1805032362;
         private const string apiHash = "AAEmfvbU4lxx4WDCtwUhaVPofbg8vKa5QDI";
 
+        private const string txtStart = "Привіт! Ви хто?";
+        private const string txtWorkerArc = "Вітаю працівника АРС! Індентифікуйте себе:";
+        private const string txtClientArc = "Вітаю клієнта АРС! Це бот компанії АРС під назвою АРСеній. Я буду присилати вам сюди цікаві пропозиції.";
+        private const string txtNeither = "Привіт! Ви хто?";
+
+
         //бот АндрійБот
         //private const int apiId = 1802156713;
         //private const string apiHash = "AAHA1ZNEMBW94UHppMMU6RrMP-nxjWuQsXw";
@@ -44,6 +50,7 @@ namespace TelegramBot
 
 
         private static TelegramBotClient _botClient;
+        private static readonly List<User> _users = new List<User>();
         private static readonly List<Message> _messages = new List<Message>();
 
         private static TelegramClient _botApi;
@@ -90,105 +97,125 @@ namespace TelegramBot
 
             var fileStream = new StreamWriter(sessionPath + logFileName, true);
 
-            var infinity = true;
-            while (infinity)
-            {
-                //var message = Console.ReadLine();
-                //if (message != "")
-                //{
-                //    _botClient.SendTextMessageAsync(_messages[_messages.Count - 1].ChatId, message);
-                //}
-
-                Thread.Sleep(100);
-                var message = _messages.FirstOrDefault(m => (!m.Done));
-                if (message != null)
-                {
-                    fileStream.WriteLine($"{message.ChatId},{message.FirstName},{message.LastName},{message.Text}");
-                    fileStream.Flush();
-
-                    if (message.Text == @"/start")
-                    {
-                        var text = "Привіт! Ви хто?";
-                        var ikm = new InlineKeyboardMarkup(new[] {
+            EventHandler<CallbackQueryEventArgs> CallbackQueryEvent = null;
+            var buttonStart = new InlineKeyboardMarkup(new[] {
                             new[] { InlineKeyboardButton.WithCallbackData("Працівник компанії АРС", "workingArc")},
                             new[] { InlineKeyboardButton.WithCallbackData("Клієнт компанії АРС", "clientArc")},
                             new[] { InlineKeyboardButton.WithCallbackData("Випадково зайшов", "nothingArc")}
                         });
 
-                        _botClient.SendTextMessageAsync(message.ChatId, text, replyMarkup: ikm).Wait();
+            var infinity = true;
+            while (infinity)
+            {
+                Thread.Sleep(10);
+                var message = _messages.FirstOrDefault(m => (!m.Done));
+                if (message != null)
+                {
+                    fileStream.WriteLine($"{message.ChatId},{message.User.FirstName},{message.User.LastName},{message.Text}");
+                    fileStream.Flush();
 
-                        EventHandler<CallbackQueryEventArgs> answerForBlok1 = null;
-                        EventHandler<CallbackQueryEventArgs> answerForBlok2 = null;
+                    if (message.Text == @"/start")
+                    {
+                        _botClient.SendTextMessageAsync(message.ChatId, txtStart, replyMarkup: buttonStart).Wait();
 
-                        answerForBlok1 = (object sender, CallbackQueryEventArgs ev) =>
+                        CallbackQueryEvent = (object sender, CallbackQueryEventArgs ev) =>
                         {
-                            //var msg = ev.CallbackQuery.Message;
+                            var chatId = ev.CallbackQuery.Message.Chat.Id;
+
+                            _botClient.EditMessageReplyMarkupAsync(chatId, ev.CallbackQuery.Message.MessageId, null).Wait();
+
                             if (ev.CallbackQuery.Data == "workingArc")
                             {
-                                _botClient.OnCallbackQuery -= answerForBlok1;
-                                _botClient.OnCallbackQuery += answerForBlok2;
-                                foreach (var user in usersSQL)
-                                {
-                                    var match = new MatchsMaker(Transliteration.Translit(user.LastName), message.LastName);
-                                    user.Vaga = match.GetScore();
-                                }
-                                var usersLike = usersSQL.OrderByDescending(u => u.Vaga).Take(3).ToList();
-                                //var sss = usersSQL.Select(u => { var match = new MatchsMaker(u.LastName, message.LastName); return match.GetScore(); });
+                                //foreach (var user in usersSQL)
+                                //{
+                                //    var match = new MatchsMaker(Transliteration.Translit(user.LastName), ev.CallbackQuery.From.LastName);
+                                //    user.Vaga = match.GetScore();
+                                //}
+                                //var usersLike = usersSQL.OrderByDescending(u => u.Vaga).Take(3).ToList();
 
-                                var text1 = "Вітаю працівника АРС! Індентифікуйте себе:";
-                                var ikm1 = new InlineKeyboardMarkup(new[] {
+                                _users.FirstOrDefault(u => u.UserId == ev.CallbackQuery.From.Id).Type = ClientType.Worker;
+
+                                var usersLike = usersSQL.Select(u => { var match = new MatchsMaker(Transliteration.Translit(u.LastName), ev.CallbackQuery.From.LastName); u.Vaga = match.GetScore(); return u; })
+                                                        .OrderByDescending(x => x.Vaga)
+                                                        .Take(3)
+                                                        .ToList();
+
+                                var buttonWorkerIndefity = new InlineKeyboardMarkup(new[] {
                                         new[] { InlineKeyboardButton.WithCallbackData($"1. {usersLike[0].LastName} {usersLike[0].FirstName} {usersLike[0].Surname}", "var1")},
                                         new[] { InlineKeyboardButton.WithCallbackData($"2. {usersLike[1].LastName} {usersLike[1].FirstName} {usersLike[1].Surname}", "var2")},
                                         new[] { InlineKeyboardButton.WithCallbackData($"3. {usersLike[2].LastName} {usersLike[2].FirstName} {usersLike[2].Surname}", "var3")},
                                         new[] { InlineKeyboardButton.WithCallbackData($"Тут мене немає", "nothing")}
                                 });
-                                _botClient.SendTextMessageAsync(message.ChatId, text1, replyMarkup: ikm1).Wait();
+                                _botClient.SendTextMessageAsync(chatId, txtWorkerArc, replyMarkup: buttonWorkerIndefity).Wait();
                             }
                             else if (ev.CallbackQuery.Data == "clientArc")
                             {
-                                _botClient.OnCallbackQuery -= answerForBlok1;
-                                _botClient.SendTextMessageAsync(message.ChatId, "Вітаю клієнта АРС! Це бот компанії АРС під назвою АРСеній. Я буду присилати вам сюди цікаві пропозиції.").Wait();
+                                _botClient.OnCallbackQuery -= CallbackQueryEvent;
+                                _users.FirstOrDefault(u => u.UserId == ev.CallbackQuery.From.Id).Type = ClientType.Client;
+                                _botClient.SendTextMessageAsync(chatId, txtClientArc).Wait();
                             }
                             else if (ev.CallbackQuery.Data == "nothingArc")
                             {
-                                _botClient.OnCallbackQuery -= answerForBlok1;
-                                _botClient.SendTextMessageAsync(message.ChatId, "Прощайте. Щасти вам.").Wait();
+                                _botClient.OnCallbackQuery -= CallbackQueryEvent;
+                                _users.FirstOrDefault(u => u.UserId == ev.CallbackQuery.From.Id).Type = ClientType.Neither;
+                                _botClient.SendTextMessageAsync(chatId, txtNeither).Wait();
                             }
-
-                        };
-
-                        answerForBlok2 = (object sender, CallbackQueryEventArgs ev) =>
-                        {
-                            if (ev.CallbackQuery.Data == "var1")
+                            else if (ev.CallbackQuery.Data == "var1")
                             {
-                                _botClient.OnCallbackQuery -= answerForBlok2;
-                                _botClient.SendTextMessageAsync(message.ChatId, "Дякуємо.").Wait();
+                                _botClient.OnCallbackQuery -= CallbackQueryEvent;
+                                var userSQL = usersSQL.Select(u => { var match = new MatchsMaker(Transliteration.Translit(u.LastName), ev.CallbackQuery.From.LastName); u.Vaga = match.GetScore(); return u; })
+                                                        .OrderByDescending(x => x.Vaga)
+                                                        .First();
+                                _botClient.SendTextMessageAsync(chatId, $"Вітаємо {userSQL.LastName} {userSQL.FirstName} {userSQL.Surname}. Ви індентифіковані і записані в базу.").Wait();
+                                var user = _users.FirstOrDefault(u => u.UserId == ev.CallbackQuery.From.Id);
+                                user.LastNameArc = userSQL.LastName;
+                                user.FirstNameArc = userSQL.FirstName;
+                                user.SurnameArc = userSQL.Surname;
+                                user.IdArc = userSQL.Id;
                             }
                             else if (ev.CallbackQuery.Data == "var2")
                             {
-                                _botClient.OnCallbackQuery -= answerForBlok2;
-                                _botClient.SendTextMessageAsync(message.ChatId, "Дякуємо.").Wait();
+                                _botClient.OnCallbackQuery -= CallbackQueryEvent;
+                                var userSQL = usersSQL.Select(u => { var match = new MatchsMaker(Transliteration.Translit(u.LastName), ev.CallbackQuery.From.LastName); u.Vaga = match.GetScore(); return u; })
+                                                        .OrderByDescending(x => x.Vaga)
+                                                        .Skip(1)
+                                                        .First();
+                                _botClient.SendTextMessageAsync(chatId, $"Вітаємо {userSQL.LastName} {userSQL.FirstName} {userSQL.Surname}. Ви індентифіковані і записані в базу.").Wait();
+                                var user = _users.FirstOrDefault(u => u.UserId == ev.CallbackQuery.From.Id);
+                                user.LastNameArc = userSQL.LastName;
+                                user.FirstNameArc = userSQL.FirstName;
+                                user.SurnameArc = userSQL.Surname;
+                                user.IdArc = userSQL.Id;
                             }
                             else if (ev.CallbackQuery.Data == "var3")
                             {
-                                _botClient.OnCallbackQuery -= answerForBlok2;
-                                _botClient.SendTextMessageAsync(message.ChatId, "Дякуємо.").Wait();
+                                _botClient.OnCallbackQuery -= CallbackQueryEvent;
+                                var userSQL = usersSQL.Select(u => { var match = new MatchsMaker(Transliteration.Translit(u.LastName), ev.CallbackQuery.From.LastName); u.Vaga = match.GetScore(); return u; })
+                                                        .OrderByDescending(x => x.Vaga)
+                                                        .Skip(2)
+                                                        .First();
+                                _botClient.SendTextMessageAsync(chatId, $"Вітаємо {userSQL.LastName} {userSQL.FirstName} {userSQL.Surname}. Ви індентифіковані і записані в базу.").Wait();
+                                var user = _users.FirstOrDefault(u => u.UserId == ev.CallbackQuery.From.Id);
+                                user.LastNameArc = userSQL.LastName;
+                                user.FirstNameArc = userSQL.FirstName;
+                                user.SurnameArc = userSQL.Surname;
+                                user.IdArc = userSQL.Id;
                             }
                             else if (ev.CallbackQuery.Data == "nothing")
                             {
-                                _botClient.OnCallbackQuery -= answerForBlok2;
-                                _botClient.SendTextMessageAsync(message.ChatId, $"Id нашої розмови: {message.ChatId}.\nЗверніться в компютерний відділ для індентифікації.").Wait();
+                                _botClient.OnCallbackQuery -= CallbackQueryEvent;
+                                _botClient.SendTextMessageAsync(chatId, $"Id нашої розмови: {chatId}.\nЗверніться в компютерний відділ для індентифікації.").Wait();
                             }
+
                         };
+                        _botClient.OnCallbackQuery += CallbackQueryEvent;
 
-
-                        _botClient.OnCallbackQuery += answerForBlok1;
                     }
 
                     if (message.Text == @"/getid")
                     {
                         _botClient.SendTextMessageAsync(message.ChatId, $"Id нашої розмови: {message.ChatId}");
-                        Console.WriteLine($"Send a message '{message.ChatId}' to {message.FirstName} {message.LastName}");
+                        Console.WriteLine($"Send a message '{message.ChatId}' to {message.User.FirstName} {message.User.LastName}");
                     }
 
                     if (message.Text == @"/stop")
@@ -209,13 +236,22 @@ namespace TelegramBot
             if (e.Message.Text != null)
             {
                 Console.WriteLine($"Received a message  '{e.Message.Text}'  from {e.Message.From}");
+                var user = _users.FirstOrDefault(u => u.UserId == e.Message.From.Id);
+                if (user == null)
+                {
+                    user = new User()
+                    {
+                        UserId = e.Message.From.Id,
+                        Username = e.Message.From.Username,
+                        FirstName = e.Message.From.FirstName,
+                        LastName = e.Message.From.LastName,
+                    };
+                    _users.Add(user);
+                }
                 var message = new Message
                 {
                     MessageId = e.Message.MessageId,
-                    UserId = e.Message.From.Id,
-                    Username = e.Message.From.Username,
-                    FirstName = e.Message.From.FirstName,
-                    LastName = e.Message.From.LastName,
+                    User = user,
                     ChatId = e.Message.Chat.Id,
                     Text = e.Message.Text,
                     Done = false
