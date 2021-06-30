@@ -14,7 +14,7 @@ namespace TelegramBot
         {
             var result = new List<UserSQL>();
             string connectionSql = @"Server=AKUSHNIR\MSSQLSERVER2014; Database=Kadr; uid=test; pwd=123456;";
-            string query = "SELECT [namep] ,[iname] ,[fname] FROM [Kadr].[dbo].[Kadr] WHERE datezv IS NULL";
+            string query = "SELECT [coden],[namep] ,[iname] ,[fname] FROM [Kadr].[dbo].[Kadr] WHERE datezv IS NULL";
             using (var connection = new SqlConnection(connectionSql))
             {
                 var command = new SqlCommand(query, connection);
@@ -24,7 +24,7 @@ namespace TelegramBot
                 {
                     while (reader.Read())
                     {
-                        var user = new UserSQL { FirstName = reader["iname"].ToString(), LastName = reader["namep"].ToString(), Surname = reader["fname"].ToString(), Vaga = 0 };
+                        var user = new UserSQL { Id = Convert.ToInt32(reader["coden"]), FirstName = reader["iname"].ToString(), LastName = reader["namep"].ToString(), Surname = reader["fname"].ToString(), Vaga = 0 };
                         result.Add(user);
                     }
                 }
