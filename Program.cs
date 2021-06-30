@@ -135,7 +135,7 @@ namespace TelegramBot
 
                                 _users.FirstOrDefault(u => u.UserId == ev.CallbackQuery.From.Id).Type = ClientType.Worker;
 
-                                var usersLike = usersSQL.Select(u => { var match = new MatchsMaker(Transliteration.Translit(u.LastName), ev.CallbackQuery.From.LastName); u.Vaga = match.GetScore(); return u; })
+                                var usersLike = usersSQL.Select(u => { var match = new MatchsMaker(Transliteration.Translit(u.LastName), Transliteration.Translit(ev.CallbackQuery.From.LastName)); u.Vaga = match.GetScore(); return u; })
                                                         .OrderByDescending(x => x.Vaga)
                                                         .Take(3)
                                                         .ToList();
@@ -163,7 +163,7 @@ namespace TelegramBot
                             else if (ev.CallbackQuery.Data == "var1")
                             {
                                 _botClient.OnCallbackQuery -= CallbackQueryEvent;
-                                var userSQL = usersSQL.Select(u => { var match = new MatchsMaker(Transliteration.Translit(u.LastName), ev.CallbackQuery.From.LastName); u.Vaga = match.GetScore(); return u; })
+                                var userSQL = usersSQL.Select(u => { var match = new MatchsMaker(Transliteration.Translit(u.LastName), Transliteration.Translit(ev.CallbackQuery.From.LastName)); u.Vaga = match.GetScore(); return u; })
                                                         .OrderByDescending(x => x.Vaga)
                                                         .First();
                                 _botClient.SendTextMessageAsync(chatId, $"Вітаємо {userSQL.LastName} {userSQL.FirstName} {userSQL.Surname}. Ви індентифіковані і записані в базу.").Wait();
@@ -176,7 +176,7 @@ namespace TelegramBot
                             else if (ev.CallbackQuery.Data == "var2")
                             {
                                 _botClient.OnCallbackQuery -= CallbackQueryEvent;
-                                var userSQL = usersSQL.Select(u => { var match = new MatchsMaker(Transliteration.Translit(u.LastName), ev.CallbackQuery.From.LastName); u.Vaga = match.GetScore(); return u; })
+                                var userSQL = usersSQL.Select(u => { var match = new MatchsMaker(Transliteration.Translit(u.LastName), Transliteration.Translit(ev.CallbackQuery.From.LastName)); u.Vaga = match.GetScore(); return u; })
                                                         .OrderByDescending(x => x.Vaga)
                                                         .Skip(1)
                                                         .First();
@@ -190,7 +190,7 @@ namespace TelegramBot
                             else if (ev.CallbackQuery.Data == "var3")
                             {
                                 _botClient.OnCallbackQuery -= CallbackQueryEvent;
-                                var userSQL = usersSQL.Select(u => { var match = new MatchsMaker(Transliteration.Translit(u.LastName), ev.CallbackQuery.From.LastName); u.Vaga = match.GetScore(); return u; })
+                                var userSQL = usersSQL.Select(u => { var match = new MatchsMaker(Transliteration.Translit(u.LastName), Transliteration.Translit(ev.CallbackQuery.From.LastName)); u.Vaga = match.GetScore(); return u; })
                                                         .OrderByDescending(x => x.Vaga)
                                                         .Skip(2)
                                                         .First();
