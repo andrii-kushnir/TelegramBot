@@ -49,12 +49,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Infrastructure.cs" />
-    <Compile Include="Message.cs" />
+    <Compile Include="BaseType\Infrastructure.cs" />
+    <Compile Include="BaseType\Message.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="User.cs" />
-    <Compile Include="UserFromSQL.cs" />
+    <Compile Include="BaseType\User.cs" />
+    <Compile Include="BaseType\UserFromSQL.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
