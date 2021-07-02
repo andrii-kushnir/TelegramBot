@@ -22,7 +22,6 @@ namespace TelegramBot
     class Program
     {
         private const string logFileName = "Log.txt";
-        private readonly MatchsMaker match;
         private static List<UserSQL> usersSQL;
 
         private const string txtStart = "Привіт! Ви хто?";
@@ -31,25 +30,25 @@ namespace TelegramBot
         private const string txtNeither = "До побачення.";
 
         //бот Арсеній
-        //private const int apiId = 1805032362;
-        //private const string apiHash = "AAEmfvbU4lxx4WDCtwUhaVPofbg8vKa5QDI";
+        private const int apiId = 1805032362;
+        private const string apiHash = "AAEmfvbU4lxx4WDCtwUhaVPofbg8vKa5QDI";
+
+        private static TelegramBotClient _botClient;
+        private static readonly List<User> _users = new List<User>();
+        private static readonly List<Message> _messages = new List<Message>();
 
         //бот АндрійБот
         //private const int apiId = 1802156713;
         //private const string apiHash = "AAHA1ZNEMBW94UHppMMU6RrMP-nxjWuQsXw";
 
         //Andrii_My_API
-        private const int apiId = 6423473;
-        private const string apiHash = "37e7866209e483e9f35edb45e96950b1";
+        //private const int apiId = 6423473;
+        //private const string apiHash = "37e7866209e483e9f35edb45e96950b1";
         private const string sessionPath = @"C:\Users\Andrii.Kushnir\source\repos\TelegramBot\bin\Debug\";
         private const string phone = "380689559241";
         private static string code = "46138";
         //Test configuration:149.154.167.40:443
         //Production configuration:149.154.167.50:443
-
-        private static TelegramBotClient _botClient;
-        private static readonly List<User> _users = new List<User>();
-        private static readonly List<Message> _messages = new List<Message>();
 
         private static TelegramClient _botApi;
 
@@ -58,16 +57,16 @@ namespace TelegramBot
             Console.Title = "Це АРСеній! Telegram-бот компанії АРС.";
             usersSQL = UsersFromSQL.Do();
 
-            //Do_Bot();
+            Do_Bot();
 
-            Do_TelegramAPI().Wait();
+            //Do_TelegramAPI().Wait();
         }
 
         [Obsolete]
         static void Do_Bot()
         {
             var token = $"{apiId}:{apiHash}";
-            var _botClient = new TelegramBotClient(token);
+            _botClient = new TelegramBotClient(token);
             var me = _botClient.GetMeAsync().Result;
 
             Console.OutputEncoding = Encoding.UTF8;
@@ -90,7 +89,7 @@ namespace TelegramBot
             var infinity = true;
             while (infinity)
             {
-                Thread.Sleep(10);
+                Thread.Sleep(100); // Забрати(зменшити) якщо велика нагрузка(багато повідомлень)
                 var message = _messages.FirstOrDefault(m => (!m.Done));
                 if (message != null)
                 {
@@ -127,13 +126,6 @@ namespace TelegramBot
                                 switch (ev.CallbackQuery.Data)
                                 {
                                     case "workingArc":
-                                        //foreach (var user in usersSQL)
-                                        //{
-                                        //    var match = new MatchsMaker(Transliteration.Translit(user.LastName), ev.CallbackQuery.From.LastName);
-                                        //    user.Vaga = match.GetScore();
-                                        //}
-                                        //var usersLike = usersSQL.OrderByDescending(u => u.Vaga).Take(3).ToList();
-
                                         user.Type = ClientType.Worker;
                                         _botClient.SendTextMessageAsync(chatId, txtWorkerArc).Wait();
 
@@ -145,16 +137,12 @@ namespace TelegramBot
                                         }
                                         else
                                         {
-                                            var usersLike = usersSQL.Where(us => us.TelegramId == 0)
-                                                                    .Select(u => { var match = new MatchsMaker(Transliteration.Translit(u.LastName), Transliteration.Translit(ev.CallbackQuery.From.LastName)); u.Vaga = match.GetScore(); return u; })
-                                                                    .OrderByDescending(x => x.Vaga)
-                                                                    .Take(3)
-                                                                    .ToList();
+                                            var usersSQLApproximate = GetApproximateUsers(ev.CallbackQuery.From);
 
                                             var buttonWorkerIndefity = new InlineKeyboardMarkup(new[] {
-                                                new[] { InlineKeyboardButton.WithCallbackData($"1. {usersLike[0].LastName} {usersLike[0].FirstName} {usersLike[0].Surname}", "var1")},
-                                                new[] { InlineKeyboardButton.WithCallbackData($"2. {usersLike[1].LastName} {usersLike[1].FirstName} {usersLike[1].Surname}", "var2")},
-                                                new[] { InlineKeyboardButton.WithCallbackData($"3. {usersLike[2].LastName} {usersLike[2].FirstName} {usersLike[2].Surname}", "var3")},
+                                                new[] { InlineKeyboardButton.WithCallbackData($"1. {usersSQLApproximate[0].LastName} {usersSQLApproximate[0].FirstName} {usersSQLApproximate[0].Surname}", "var1")},
+                                                new[] { InlineKeyboardButton.WithCallbackData($"2. {usersSQLApproximate[1].LastName} {usersSQLApproximate[1].FirstName} {usersSQLApproximate[1].Surname}", "var2")},
+                                                new[] { InlineKeyboardButton.WithCallbackData($"3. {usersSQLApproximate[2].LastName} {usersSQLApproximate[2].FirstName} {usersSQLApproximate[2].Surname}", "var3")},
                                                 new[] { InlineKeyboardButton.WithCallbackData($"Тут мене немає", "nothing")}
                                             });
                                             _botClient.SendTextMessageAsync(chatId, "Індентифікуйте себе:", replyMarkup: buttonWorkerIndefity).Wait();
@@ -163,9 +151,9 @@ namespace TelegramBot
                                     case "clientArc":
                                         _botClient.OnCallbackQuery -= CallbackQueryEvent;
                                         user.Type = ClientType.Client;
-                                        user.LastNameArc = "Клієнт";
-                                        user.FirstNameArc = "Клієнт";
-                                        user.SurnameArc = "Клієнт";
+                                        user.LastNameArc = "Клієнт"; // заповнити в майбутньому !!!!
+                                        user.FirstNameArc = "Клієнт"; // заповнити в майбутньому !!!!
+                                        user.SurnameArc = "Клієнт"; // заповнити в майбутньому !!!!
                                         user.IdArc = 1; // заповнити в майбутньому !!!!
                                         _botClient.SendTextMessageAsync(chatId, txtClientArc).Wait();
                                         break;
@@ -178,11 +166,7 @@ namespace TelegramBot
                                     case "var2":
                                     case "var3":
                                         _botClient.OnCallbackQuery -= CallbackQueryEvent;
-                                        var userSQL = usersSQL.Where(us => us.TelegramId == 0)
-                                                                .Select(u => { var match = new MatchsMaker(Transliteration.Translit(u.LastName), Transliteration.Translit(ev.CallbackQuery.From.LastName)); u.Vaga = match.GetScore(); return u; })
-                                                                .OrderByDescending(x => x.Vaga)
-                                                                .Skip(Convert.ToInt32(ev.CallbackQuery.Data.Substring(3, 1)) - 1)
-                                                                .First();
+                                        var userSQL = GetApproximateUsers(ev.CallbackQuery.From)[Convert.ToInt32(ev.CallbackQuery.Data.Substring(3, 1)) - 1];
                                         _botClient.SendTextMessageAsync(chatId, $"Вітаємо {userSQL.LastName} {userSQL.FirstName} {userSQL.Surname}. Ви індентифіковані і записані в базу.").Wait();
                                         user.LastNameArc = userSQL.LastName;
                                         user.FirstNameArc = userSQL.FirstName;
@@ -221,6 +205,29 @@ namespace TelegramBot
 
             fileStream.Dispose();
             _botClient.StopReceiving();
+        }
+
+        static List<UserSQL> GetApproximateUsers(Telegram.Bot.Types.User from)
+        {
+            var result = usersSQL.Where(us => us.TelegramId == 0)
+                    .Select(u =>
+                    {
+                        if (Transliteration.Translit(u.LastName) == Transliteration.Translit(from.LastName))
+                        {
+                            var match = new MatchsMaker(Transliteration.Translit(u.FirstName), Transliteration.Translit(from.FirstName));
+                            u.Vaga = 1 + match.GetScore();
+                        }
+                        else
+                        {
+                            var match = new MatchsMaker(Transliteration.Translit(u.LastName), Transliteration.Translit(from.LastName));
+                            u.Vaga = match.GetScore();
+                        }
+                        return u;
+                    })
+                    .OrderByDescending(x => x.Vaga)
+                    .Take(3)
+                    .ToList();
+            return result;
         }
 
         static void Bot_OnMessage(object sender, MessageEventArgs e)
