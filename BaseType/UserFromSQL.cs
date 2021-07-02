@@ -10,11 +10,12 @@ namespace TelegramBot
 {
     public static class UsersFromSQL
     {
+        private const string connectionSql = @"Server=AKUSHNIR\MSSQLSERVER2014; Database=Kadr; uid=test; pwd=123456;";
+        private const string query = "SELECT [coden], [namep], [iname], [fname] FROM [Kadr].[dbo].[Kadr] WHERE datezv IS NULL";
+
         public static List<UserSQL> Do()
         {
             var result = new List<UserSQL>();
-            string connectionSql = @"Server=AKUSHNIR\MSSQLSERVER2014; Database=Kadr; uid=test; pwd=123456;";
-            string query = "SELECT [coden],[namep] ,[iname] ,[fname] FROM [Kadr].[dbo].[Kadr] WHERE datezv IS NULL";
             using (var connection = new SqlConnection(connectionSql))
             {
                 var command = new SqlCommand(query, connection);

@@ -79,12 +79,69 @@ namespace TelegramBot
 
             var fileStream = new StreamWriter(sessionPath + logFileName, true);
 
-            EventHandler<CallbackQueryEventArgs> CallbackQueryEvent = null;
-            var buttonStart = new InlineKeyboardMarkup(new[] {
-                            new[] { InlineKeyboardButton.WithCallbackData("Працівник компанії АРС", "workingArc")},
-                            new[] { InlineKeyboardButton.WithCallbackData("Клієнт компанії АРС", "clientArc")},
-                            new[] { InlineKeyboardButton.WithCallbackData("Випадково зайшов", "nothingArc")}
-                        });
+            // Main Handler
+            EventHandler<CallbackQueryEventArgs> CallbackQueryEvent = (object sender, CallbackQueryEventArgs ev) =>
+            {
+                var chatId = ev.CallbackQuery.Message.Chat.Id;
+                var user = _users.FirstOrDefault(u => u.UserId == ev.CallbackQuery.From.Id);
+
+                _botClient.EditMessageReplyMarkupAsync(chatId, ev.CallbackQuery.Message.MessageId, null).Wait();
+
+                switch (ev.CallbackQuery.Data)
+                {
+                    case "workingArc":
+                        user.Type = ClientType.Worker;
+                        _botClient.SendTextMessageAsync(chatId, txtWorkerArc).Wait();
+
+                        if (user.LastName == null || user.FirstName == null)
+                        {
+                            _botClient.SendTextMessageAsync(chatId, $"Нажаль ви не вказали імені або прізвища в своєму акаунті Telegram, тому ми не змогли вас індентифікувати.").Wait();
+                            _botClient.SendTextMessageAsync(chatId, $"Id нашої розмови: {chatId}.\nЗверніться в компютерний відділ для індентифікації.").Wait();
+                        }
+                        else
+                        {
+                            var usersSQLApproximate = GetApproximateUsers(ev.CallbackQuery.From);
+
+                            var buttonWorkerIndefity = new InlineKeyboardMarkup(new[] {
+                                                new[] { InlineKeyboardButton.WithCallbackData($"1. {usersSQLApproximate[0].LastName} {usersSQLApproximate[0].FirstName} {usersSQLApproximate[0].Surname}", "var1")},
+                                                new[] { InlineKeyboardButton.WithCallbackData($"2. {usersSQLApproximate[1].LastName} {usersSQLApproximate[1].FirstName} {usersSQLApproximate[1].Surname}", "var2")},
+                                                new[] { InlineKeyboardButton.WithCallbackData($"3. {usersSQLApproximate[2].LastName} {usersSQLApproximate[2].FirstName} {usersSQLApproximate[2].Surname}", "var3")},
+                                                new[] { InlineKeyboardButton.WithCallbackData($"Тут мене немає", "nothing")}
+                                            });
+                            _botClient.SendTextMessageAsync(chatId, "Індентифікуйте себе:", replyMarkup: buttonWorkerIndefity).Wait();
+                        }
+                        break;
+                    case "clientArc":
+                        user.Type = ClientType.Client;
+                        user.LastNameArc = "Клієнт"; // заповнити в майбутньому !!!!
+                        user.FirstNameArc = "Клієнт"; // заповнити в майбутньому !!!!
+                        user.SurnameArc = "Клієнт"; // заповнити в майбутньому !!!!
+                        user.IdArc = 1; // заповнити в майбутньому !!!!
+                        _botClient.SendTextMessageAsync(chatId, txtClientArc).Wait();
+                        break;
+                    case "nothingArc":
+                        user.Type = ClientType.Neither;
+                        _botClient.SendTextMessageAsync(chatId, txtNeither).Wait();
+                        break;
+                    case "var1":
+                    case "var2":
+                    case "var3":
+                        var userSQL = GetApproximateUsers(ev.CallbackQuery.From)[Convert.ToInt32(ev.CallbackQuery.Data.Substring(3, 1)) - 1];
+                        _botClient.SendTextMessageAsync(chatId, $"Вітаємо {userSQL.LastName} {userSQL.FirstName} {userSQL.Surname}. Ви індентифіковані і записані в базу.").Wait();
+                        user.LastNameArc = userSQL.LastName;
+                        user.FirstNameArc = userSQL.FirstName;
+                        user.SurnameArc = userSQL.Surname;
+                        user.IdArc = userSQL.Id;
+                        userSQL.TelegramId = user.UserId;
+                        break;
+                    case "nothing":
+                        _botClient.SendTextMessageAsync(chatId, $"Id нашої розмови: {chatId}.\nЗверніться в компютерний відділ для індентифікації.").Wait();
+                        break;
+                    default:
+                        break;
+                }
+            };
+            _botClient.OnCallbackQuery += CallbackQueryEvent;
 
             var infinity = true;
             while (infinity)
@@ -114,77 +171,12 @@ namespace TelegramBot
                         }
                         else
                         {
+                            var buttonStart = new InlineKeyboardMarkup(new[] {
+                                new[] { InlineKeyboardButton.WithCallbackData("Працівник компанії АРС", "workingArc")},
+                                new[] { InlineKeyboardButton.WithCallbackData("Клієнт компанії АРС", "clientArc")},
+                                new[] { InlineKeyboardButton.WithCallbackData("Випадково зайшов", "nothingArc")}
+                            });
                             _botClient.SendTextMessageAsync(message.ChatId, txtStart, replyMarkup: buttonStart).Wait();
-
-                            CallbackQueryEvent = (object sender, CallbackQueryEventArgs ev) =>
-                            {
-                                var chatId = ev.CallbackQuery.Message.Chat.Id;
-                                var user = _users.FirstOrDefault(u => u.UserId == ev.CallbackQuery.From.Id);
-
-                                _botClient.EditMessageReplyMarkupAsync(chatId, ev.CallbackQuery.Message.MessageId, null).Wait();
-
-                                switch (ev.CallbackQuery.Data)
-                                {
-                                    case "workingArc":
-                                        user.Type = ClientType.Worker;
-                                        _botClient.SendTextMessageAsync(chatId, txtWorkerArc).Wait();
-
-                                        if (user.LastName == null || user.FirstName == null)
-                                        {
-                                            _botClient.OnCallbackQuery -= CallbackQueryEvent;
-                                            _botClient.SendTextMessageAsync(chatId, $"Нажаль ви не вказали імені або прізвища в своєму акаунті Telegram, тому ми не змогли вас індентифікувати.").Wait();
-                                            _botClient.SendTextMessageAsync(chatId, $"Id нашої розмови: {chatId}.\nЗверніться в компютерний відділ для індентифікації.").Wait();
-                                        }
-                                        else
-                                        {
-                                            var usersSQLApproximate = GetApproximateUsers(ev.CallbackQuery.From);
-
-                                            var buttonWorkerIndefity = new InlineKeyboardMarkup(new[] {
-                                                new[] { InlineKeyboardButton.WithCallbackData($"1. {usersSQLApproximate[0].LastName} {usersSQLApproximate[0].FirstName} {usersSQLApproximate[0].Surname}", "var1")},
-                                                new[] { InlineKeyboardButton.WithCallbackData($"2. {usersSQLApproximate[1].LastName} {usersSQLApproximate[1].FirstName} {usersSQLApproximate[1].Surname}", "var2")},
-                                                new[] { InlineKeyboardButton.WithCallbackData($"3. {usersSQLApproximate[2].LastName} {usersSQLApproximate[2].FirstName} {usersSQLApproximate[2].Surname}", "var3")},
-                                                new[] { InlineKeyboardButton.WithCallbackData($"Тут мене немає", "nothing")}
-                                            });
-                                            _botClient.SendTextMessageAsync(chatId, "Індентифікуйте себе:", replyMarkup: buttonWorkerIndefity).Wait();
-                                        }
-                                        break;
-                                    case "clientArc":
-                                        _botClient.OnCallbackQuery -= CallbackQueryEvent;
-                                        user.Type = ClientType.Client;
-                                        user.LastNameArc = "Клієнт"; // заповнити в майбутньому !!!!
-                                        user.FirstNameArc = "Клієнт"; // заповнити в майбутньому !!!!
-                                        user.SurnameArc = "Клієнт"; // заповнити в майбутньому !!!!
-                                        user.IdArc = 1; // заповнити в майбутньому !!!!
-                                        _botClient.SendTextMessageAsync(chatId, txtClientArc).Wait();
-                                        break;
-                                    case "nothingArc":
-                                        _botClient.OnCallbackQuery -= CallbackQueryEvent;
-                                        user.Type = ClientType.Neither;
-                                        _botClient.SendTextMessageAsync(chatId, txtNeither).Wait();
-                                        break;
-                                    case "var1":
-                                    case "var2":
-                                    case "var3":
-                                        _botClient.OnCallbackQuery -= CallbackQueryEvent;
-                                        var userSQL = GetApproximateUsers(ev.CallbackQuery.From)[Convert.ToInt32(ev.CallbackQuery.Data.Substring(3, 1)) - 1];
-                                        _botClient.SendTextMessageAsync(chatId, $"Вітаємо {userSQL.LastName} {userSQL.FirstName} {userSQL.Surname}. Ви індентифіковані і записані в базу.").Wait();
-                                        user.LastNameArc = userSQL.LastName;
-                                        user.FirstNameArc = userSQL.FirstName;
-                                        user.SurnameArc = userSQL.Surname;
-                                        user.IdArc = userSQL.Id;
-                                        userSQL.TelegramId = user.UserId;
-                                        break;
-                                    case "nothing":
-                                        _botClient.OnCallbackQuery -= CallbackQueryEvent;
-                                        _botClient.SendTextMessageAsync(chatId, $"Id нашої розмови: {chatId}.\nЗверніться в компютерний відділ для індентифікації.").Wait();
-                                        break;
-                                    default:
-                                        _botClient.OnCallbackQuery -= CallbackQueryEvent;
-                                        break;
-                                }
-                            };
-
-                            _botClient.OnCallbackQuery += CallbackQueryEvent;
                         }
                     }
 
@@ -207,26 +199,31 @@ namespace TelegramBot
             _botClient.StopReceiving();
         }
 
+        private static object locker = new object();
         static List<UserSQL> GetApproximateUsers(Telegram.Bot.Types.User from)
         {
-            var result = usersSQL.Where(us => us.TelegramId == 0)
-                    .Select(u =>
-                    {
-                        if (Transliteration.Translit(u.LastName) == Transliteration.Translit(from.LastName))
-                        {
-                            var match = new MatchsMaker(Transliteration.Translit(u.FirstName), Transliteration.Translit(from.FirstName));
-                            u.Vaga = 1 + match.GetScore();
-                        }
-                        else
-                        {
-                            var match = new MatchsMaker(Transliteration.Translit(u.LastName), Transliteration.Translit(from.LastName));
-                            u.Vaga = match.GetScore();
-                        }
-                        return u;
-                    })
-                    .OrderByDescending(x => x.Vaga)
-                    .Take(3)
-                    .ToList();
+            List<UserSQL> result = null;
+            lock (locker)
+            {
+                result = usersSQL.Where(user => user.TelegramId == 0)
+                                    .Select(u =>
+                                    {
+                                        if (Transliteration.Translit(u.LastName) == Transliteration.Translit(from.LastName))
+                                        {
+                                            var match = new MatchsMaker(Transliteration.Translit(u.FirstName), Transliteration.Translit(from.FirstName));
+                                            u.Vaga = 1 + match.GetScore();
+                                        }
+                                        else
+                                        {
+                                            var match = new MatchsMaker(Transliteration.Translit(u.LastName), Transliteration.Translit(from.LastName));
+                                            u.Vaga = match.GetScore();
+                                        }
+                                        return u;
+                                    })
+                                    .OrderByDescending(x => x.Vaga)
+                                    .Take(3)
+                                    .ToList();
+            }
             return result;
         }
 
