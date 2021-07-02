@@ -80,23 +80,23 @@ namespace TelegramBot
             var fileStream = new StreamWriter(sessionPath + logFileName, true);
 
             // Main Handler
-            EventHandler<CallbackQueryEventArgs> CallbackQueryEvent = (object sender, CallbackQueryEventArgs ev) =>
+            EventHandler<CallbackQueryEventArgs> CallbackQueryEvent = async (object sender, CallbackQueryEventArgs ev) =>
             {
                 var chatId = ev.CallbackQuery.Message.Chat.Id;
                 var user = _users.FirstOrDefault(u => u.UserId == ev.CallbackQuery.From.Id);
 
-                _botClient.EditMessageReplyMarkupAsync(chatId, ev.CallbackQuery.Message.MessageId, null).Wait();
+                await _botClient.EditMessageReplyMarkupAsync(chatId, ev.CallbackQuery.Message.MessageId, null);
 
                 switch (ev.CallbackQuery.Data)
                 {
                     case "workingArc":
                         user.Type = ClientType.Worker;
-                        _botClient.SendTextMessageAsync(chatId, txtWorkerArc).Wait();
+                        await _botClient.SendTextMessageAsync(chatId, txtWorkerArc);
 
                         if (user.LastName == null || user.FirstName == null)
                         {
-                            _botClient.SendTextMessageAsync(chatId, $"Нажаль ви не вказали імені або прізвища в своєму акаунті Telegram, тому ми не змогли вас індентифікувати.").Wait();
-                            _botClient.SendTextMessageAsync(chatId, $"Id нашої розмови: {chatId}.\nЗверніться в компютерний відділ для індентифікації.").Wait();
+                            await _botClient.SendTextMessageAsync(chatId, $"Нажаль ви не вказали імені або прізвища в своєму акаунті Telegram, тому ми не змогли вас індентифікувати.");
+                            await _botClient.SendTextMessageAsync(chatId, $"Id нашої розмови: {chatId}.\nЗверніться в компютерний відділ для індентифікації.");
                         }
                         else
                         {
@@ -108,7 +108,7 @@ namespace TelegramBot
                                                 new[] { InlineKeyboardButton.WithCallbackData($"3. {usersSQLApproximate[2].LastName} {usersSQLApproximate[2].FirstName} {usersSQLApproximate[2].Surname}", "var3")},
                                                 new[] { InlineKeyboardButton.WithCallbackData($"Тут мене немає", "nothing")}
                                             });
-                            _botClient.SendTextMessageAsync(chatId, "Індентифікуйте себе:", replyMarkup: buttonWorkerIndefity).Wait();
+                            await _botClient.SendTextMessageAsync(chatId, "Індентифікуйте себе:", replyMarkup: buttonWorkerIndefity);
                         }
                         break;
                     case "clientArc":
@@ -117,17 +117,17 @@ namespace TelegramBot
                         user.FirstNameArc = "Клієнт"; // заповнити в майбутньому !!!!
                         user.SurnameArc = "Клієнт"; // заповнити в майбутньому !!!!
                         user.IdArc = 1; // заповнити в майбутньому !!!!
-                        _botClient.SendTextMessageAsync(chatId, txtClientArc).Wait();
+                        await _botClient.SendTextMessageAsync(chatId, txtClientArc);
                         break;
                     case "nothingArc":
                         user.Type = ClientType.Neither;
-                        _botClient.SendTextMessageAsync(chatId, txtNeither).Wait();
+                        await _botClient.SendTextMessageAsync(chatId, txtNeither);
                         break;
                     case "var1":
                     case "var2":
                     case "var3":
                         var userSQL = GetApproximateUsers(ev.CallbackQuery.From)[Convert.ToInt32(ev.CallbackQuery.Data.Substring(3, 1)) - 1];
-                        _botClient.SendTextMessageAsync(chatId, $"Вітаємо {userSQL.LastName} {userSQL.FirstName} {userSQL.Surname}. Ви індентифіковані і записані в базу.").Wait();
+                        await _botClient.SendTextMessageAsync(chatId, $"Вітаємо {userSQL.LastName} {userSQL.FirstName} {userSQL.Surname}. Ви індентифіковані і записані в базу.");
                         user.LastNameArc = userSQL.LastName;
                         user.FirstNameArc = userSQL.FirstName;
                         user.SurnameArc = userSQL.Surname;
@@ -135,7 +135,7 @@ namespace TelegramBot
                         userSQL.TelegramId = user.UserId;
                         break;
                     case "nothing":
-                        _botClient.SendTextMessageAsync(chatId, $"Id нашої розмови: {chatId}.\nЗверніться в компютерний відділ для індентифікації.").Wait();
+                        await _botClient.SendTextMessageAsync(chatId, $"Id нашої розмови: {chatId}.\nЗверніться в компютерний відділ для індентифікації.");
                         break;
                     default:
                         break;
