@@ -44,7 +44,7 @@ namespace TelegramBot
         //Andrii_My_API
         //private const int apiId = 6423473;
         //private const string apiHash = "37e7866209e483e9f35edb45e96950b1";
-        private const string sessionPath = @"C:\Users\Andrii.Kushnir\source\repos\TelegramBot\bin\Debug\";
+        private const string sessionPath = @"C:\Users\Andrii.Kushnir\source\repos\TelegramBot\bin\Debug\"; // ЗМІНИТИ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         private const string phone = "380689559241";
         private static string code = "46138";
         //Test configuration:149.154.167.40:443
@@ -200,27 +200,27 @@ namespace TelegramBot
         }
 
         private static object locker = new object();
-        static List<UserSQL> GetApproximateUsers(Telegram.Bot.Types.User from)
+        static List<UserSQL> GetApproximateUsers(Telegram.Bot.Types.User user)
         {
             List<UserSQL> result = null;
             lock (locker)
             {
-                result = usersSQL.Where(user => user.TelegramId == 0)
+                result = usersSQL.Where(u => u.TelegramId == 0)
                                     .Select(u =>
                                     {
-                                        if (Transliteration.Translit(u.LastName) == Transliteration.Translit(from.LastName))
+                                        if (Transliteration.Translit(u.LastName) == Transliteration.Translit(user.LastName))
                                         {
-                                            var match = new MatchsMaker(Transliteration.Translit(u.FirstName), Transliteration.Translit(from.FirstName));
+                                            var match = new MatchsMaker(Transliteration.Translit(u.FirstName), Transliteration.Translit(user.FirstName));
                                             u.Vaga = 1 + match.GetScore();
                                         }
                                         else
                                         {
-                                            var match = new MatchsMaker(Transliteration.Translit(u.LastName), Transliteration.Translit(from.LastName));
+                                            var match = new MatchsMaker(Transliteration.Translit(u.LastName), Transliteration.Translit(user.LastName));
                                             u.Vaga = match.GetScore();
                                         }
                                         return u;
                                     })
-                                    .OrderByDescending(x => x.Vaga)
+                                    .OrderByDescending(u => u.Vaga)
                                     .Take(3)
                                     .ToList();
             }
