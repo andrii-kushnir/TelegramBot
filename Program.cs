@@ -10,6 +10,7 @@ using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.InputFiles;
 using Telegram.Bot.Types.ReplyMarkups;
 using TeleSharp.TL;
 using TeleSharp.TL.Messages;
@@ -22,6 +23,7 @@ namespace TelegramBot
     class Program
     {
         private const string logFileName = "Log.txt";
+        private const string userFileName = "UserAuth.txt";
         private static List<UserSQL> usersSQL;
 
         private const string txtStart = "Привіт! Ви хто?";
@@ -54,6 +56,7 @@ namespace TelegramBot
 
         static void Main(string[] args)
         {
+            Console.OutputEncoding = Encoding.UTF8;
             Console.Title = "Це АРСеній! Telegram-бот компанії АРС.";
             usersSQL = UsersFromSQL.Do();
 
@@ -69,7 +72,6 @@ namespace TelegramBot
             _botClient = new TelegramBotClient(token);
             var me = _botClient.GetMeAsync().Result;
 
-            Console.OutputEncoding = Encoding.UTF8;
             Console.WriteLine($"Я АРСеній, бот компанії АРС. Увага, я працюю!!!\nI am user {me.Id} and my name is {me.FirstName}.");
 
             _botClient.OnMessage += Bot_OnMessage;
@@ -77,7 +79,8 @@ namespace TelegramBot
 
             Console.WriteLine();
 
-            var fileStream = new StreamWriter(sessionPath + logFileName, true);
+            var fileStreamAll = new StreamWriter(sessionPath + logFileName, true);
+            var fileStreamUser = new StreamWriter(sessionPath + userFileName, true);
 
             // Main Handler
             EventHandler<CallbackQueryEventArgs> CallbackQueryEvent = async (object sender, CallbackQueryEventArgs ev) =>
@@ -117,6 +120,8 @@ namespace TelegramBot
                         user.FirstNameArc = "Клієнт"; // заповнити в майбутньому !!!!
                         user.SurnameArc = "Клієнт"; // заповнити в майбутньому !!!!
                         user.IdArc = 1; // заповнити в майбутньому !!!!
+                        fileStreamUser.WriteLine($"Client - {ev.CallbackQuery.From.FirstName},{ev.CallbackQuery.From.LastName}, ChatId - {chatId}");
+                        fileStreamUser.Flush();
                         await _botClient.SendTextMessageAsync(chatId, txtClientArc);
                         break;
                     case "nothingArc":
@@ -127,14 +132,18 @@ namespace TelegramBot
                     case "var2":
                     case "var3":
                         var userSQL = GetApproximateUsers(ev.CallbackQuery.From)[Convert.ToInt32(ev.CallbackQuery.Data.Substring(3, 1)) - 1];
-                        await _botClient.SendTextMessageAsync(chatId, $"Вітаємо {userSQL.LastName} {userSQL.FirstName} {userSQL.Surname}. Ви індентифіковані і записані в базу.");
                         user.LastNameArc = userSQL.LastName;
                         user.FirstNameArc = userSQL.FirstName;
                         user.SurnameArc = userSQL.Surname;
                         user.IdArc = userSQL.Id;
                         userSQL.TelegramId = user.UserId;
+                        fileStreamUser.WriteLine($"Worker - {userSQL.LastName},{userSQL.FirstName},{userSQL.Surname}, ChatId - {chatId}");
+                        fileStreamUser.Flush();
+                        await _botClient.SendTextMessageAsync(chatId, $"Вітаємо {userSQL.LastName} {userSQL.FirstName} {userSQL.Surname}. Ви індентифіковані і записані в базу.");
                         break;
                     case "nothing":
+                        fileStreamUser.WriteLine($"Worker - {ev.CallbackQuery.From.FirstName},{ev.CallbackQuery.From.LastName} ChatId - {chatId}");
+                        fileStreamUser.Flush();
                         await _botClient.SendTextMessageAsync(chatId, $"Id нашої розмови: {chatId}.\nЗверніться в компютерний відділ для індентифікації.");
                         break;
                     default:
@@ -150,8 +159,8 @@ namespace TelegramBot
                 var message = _messages.FirstOrDefault(m => (!m.Done));
                 if (message != null)
                 {
-                    fileStream.WriteLine($"{message.ChatId},{message.User.FirstName},{message.User.LastName},{message.Text}");
-                    fileStream.Flush();
+                    fileStreamAll.WriteLine($"{message.ChatId},{message.User.FirstName},{message.User.LastName},{message.Text}");
+                    fileStreamAll.Flush();
 
                     if (message.Text == @"/start")
                     {
@@ -186,16 +195,22 @@ namespace TelegramBot
                         Console.WriteLine($"Send a message '{message.ChatId}' to {message.User.FirstName} {message.User.LastName}");
                     }
 
+                    if (message.Text == @"/sendicon")
+                    {
+                        SendImage(message.ChatId, @"C:\Users\Andrii.Kushnir\Desktop\logo.bmp");
+                    }
+
                     if (message.Text == @"/stop")
                     {
-                        infinity = false;
+                        //infinity = false;
                     }
 
                     message.Done = true;
                 }
             }
 
-            fileStream.Dispose();
+            fileStreamAll.Dispose();
+            fileStreamUser.Dispose();
             _botClient.StopReceiving();
         }
 
@@ -225,6 +240,23 @@ namespace TelegramBot
                                     .ToList();
             }
             return result;
+        }
+
+        static void SendImage(long chatId, string file)
+        {
+            var fileStream = System.IO.File.OpenRead(file);
+            try
+            {
+                _botClient.SendPhotoAsync(chatId, new InputOnlineFile(fileStream)).Wait();
+            }
+            catch
+            {
+
+            }
+            fileStream.Dispose();
+
+            //_botClient.SendPhotoAsync(message.ChatId, @"C:\Users\Andrii.Kushnir\Desktop\logo.bmp");
+            //_botClient.SendPhotoAsync(message.ChatId, @"https://ars.ua/static/version1625371411/frontend/Maven/ars/uk_UA/images/logo.svg").Wait();
         }
 
         static void Bot_OnMessage(object sender, MessageEventArgs e)
