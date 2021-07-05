@@ -244,16 +244,18 @@ namespace TelegramBot
 
         static void SendImage(long chatId, string file)
         {
-            var fileStream = System.IO.File.OpenRead(file);
             try
             {
-                _botClient.SendPhotoAsync(chatId, new InputOnlineFile(fileStream)).Wait();
+                using (var fileStream = System.IO.File.OpenRead(file))
+                {
+                    //_botClient.SetChatPhotoAsync(chatId, new InputOnlineFile(fileStream)).Wait();
+                    _botClient.SendPhotoAsync(chatId, new InputOnlineFile(fileStream)).Wait();
+                }
             }
             catch
             {
 
             }
-            fileStream.Dispose();
 
             //_botClient.SendPhotoAsync(message.ChatId, @"C:\Users\Andrii.Kushnir\Desktop\logo.bmp");
             //_botClient.SendPhotoAsync(message.ChatId, @"https://ars.ua/static/version1625371411/frontend/Maven/ars/uk_UA/images/logo.svg").Wait();
